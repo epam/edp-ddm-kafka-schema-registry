@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  labels:
+    app: {{ .Values.name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.name }}
+      annotations:
+        sidecar.istio.io/inject: "false"        
+    spec:
+      serviceAccountName: kafka-schema-registry
+      containers:
+        - name: {{ .Values.name }}-server
+          image: "{{ template "imageRegistry" . -}} {{ .Values.defaultimage }}:{{ .Values.imageTag }}"
+          imagePullPolicy: "{{ .Values.imagePullPolicy }}"
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - "sh"
+                  - "-c"
+                  - bash /tmp/deploy_schema.sh > /dev/null 2>&1 &
+          volumeMounts:
+            - name: deploy-schema
+              mountPath: /tmp/deploy_schema.sh
+              subPath: deploy_schema.sh
+          ports:
+            - name: schema-registry
+              containerPort: {{ .Values.servicePort }}
+              protocol: TCP
+          env:
+          - name: SCHEMA_REGISTRY_HOST_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: SCHEMA_REGISTRY_LISTENERS
+            value: http://0.0.0.0:{{ .Values.servicePort }}
+          - name: SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS
+            value: {{ .Values.kafka.bootstrapServers }}
+          - name: SCHEMA_REGISTRY_MASTER_ELIGIBILITY
+            value: "true"
+          - name: SCHEMA_REGISTRY_HEAP_OPTS
+            value: "{{ .Values.heapOptions }}"
+          - name: SCHEMA_REGISTRY_OPTS
+            value: "{{ .Values.schemaRegistryOpts }}"
+      volumes:
+        - name: deploy-schema
+          configMap:
+            name: deploy-schema

@@ -54,6 +54,9 @@ spec:
             value: "{{ .Values.heapOptions }}"
           - name: SCHEMA_REGISTRY_OPTS
             value: "{{ .Values.schemaRegistryOpts }}"
+          {{- if .Values.global.container.requestsLimitsEnabled }}
+          resources: {{- toYaml .Values.global.registry.kafkaSchemaRegistry.container.resources | nindent 12 }}
+          {{- end }}
       volumes:
         - name: deploy-schema
           configMap:

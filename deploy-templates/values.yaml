@@ -93,3 +93,13 @@ prometheus:
     port: 5556
 
     resources: {}
+
+global:
+  container:
+    requestsLimitsEnabled: true
+  registry:
+    kafkaSchemaRegistry:
+      container:
+        resources:
+          requests: {}
+          limits: {}
